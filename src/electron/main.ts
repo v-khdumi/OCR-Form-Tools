@@ -51,7 +51,6 @@ async function createWindow() {
 
     }
 
-    
     const localFileSystem = new LocalFileSystem(mainWindow);
     ipcMainProxy.registerProxy("LocalFileSystem", localFileSystem);
 }
@@ -64,8 +63,8 @@ async function createWindow() {
     function onToggleDevTools() {
         mainWindow.webContents.toggleDevTools();
     }
-    
-    /**
+
+/**
  * Adds standard cut/copy/paste/etc context menu comments when right clicking input elements
  * @param browserWindow The browser window to apply the context-menu items
  */
