@@ -1,7 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { app, ipcMain, BrowserWindow, BrowserWindowConstructorOptions } from "electron";
+import {
+    app, ipcMain, BrowserWindow, BrowserWindowConstructorOptions,
+    Menu, MenuItemConstructorOptions,
+} from "electron";
 import { IpcMainProxy } from "./common/ipcMainProxy";
 import LocalFileSystem from "./providers/storage/localFileSystem";
 
@@ -43,11 +46,83 @@ async function createWindow() {
 
     if (!ipcMainProxy) {
         ipcMainProxy = new IpcMainProxy(ipcMain, mainWindow);
+        ipcMainProxy.register("RELOAD_APP", onReloadApp);
+        ipcMainProxy.register("TOGGLE_DEV_TOOLS", onToggleDevTools);
 
     }
 
+    
     const localFileSystem = new LocalFileSystem(mainWindow);
     ipcMainProxy.registerProxy("LocalFileSystem", localFileSystem);
+}
+
+    function onReloadApp() {
+        mainWindow.reload();
+        return true;
+    }
+
+    function onToggleDevTools() {
+        mainWindow.webContents.toggleDevTools();
+    }
+    
+    /**
+ * Adds standard cut/copy/paste/etc context menu comments when right clicking input elements
+ * @param browserWindow The browser window to apply the context-menu items
+ */
+function registerContextMenu(browserWindow: BrowserWindow): void {
+    const selectionMenu = Menu.buildFromTemplate([
+        { role: "copy", accelerator: "CmdOrCtrl+C" },
+        { type: "separator" },
+        { role: "selectAll", accelerator: "CmdOrCtrl+A" },
+    ]);
+
+    const inputMenu = Menu.buildFromTemplate([
+        { role: "undo", accelerator: "CmdOrCtrl+Z" },
+        { role: "redo", accelerator: "CmdOrCtrl+Shift+Z" },
+        { type: "separator" },
+        { role: "cut", accelerator: "CmdOrCtrl+X" },
+        { role: "copy", accelerator: "CmdOrCtrl+C" },
+        { role: "paste", accelerator: "CmdOrCtrl+V" },
+        { type: "separator" },
+        { role: "selectAll", accelerator: "CmdOrCtrl+A" },
+    ]);
+
+    browserWindow.webContents.on("context-menu", (e, props) => {
+        const { selectionText, isEditable } = props;
+        if (isEditable) {
+            inputMenu.popup({
+                window: browserWindow,
+            });
+        } else if (selectionText && selectionText.trim() !== "") {
+            selectionMenu.popup({
+                window: browserWindow,
+            });
+        }
+    });
+
+    const menuItems: MenuItemConstructorOptions[] = [
+        {
+            label: "File", submenu: [
+                { role: "quit" },
+            ],
+        },
+        { role: "editMenu" },
+        {
+            label: "View", submenu: [
+                { role: "reload" },
+                { type: "separator" },
+                { role: "toggleDevTools" },
+                { role: "togglefullscreen" },
+                { type: "separator" },
+                { role: "resetZoom" },
+                { role: "zoomIn" },
+                { role: "zoomOut" },
+            ],
+        },
+        { role: "windowMenu" },
+    ];
+    const menu = Menu.buildFromTemplate(menuItems);
+    Menu.setApplicationMenu(menu);
 }
 
 // This method will be called when Electron has finished
